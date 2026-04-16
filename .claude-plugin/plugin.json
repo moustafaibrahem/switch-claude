@@ -1,0 +1,6 @@
+{
+  "name": "claude-switch",
+  "version": "1.0.0",
+  "description": "Switch between saved Claude Code account profiles without logging out. Cross-shell (bash, cmd, PowerShell).",
+  "author": { "name": "Moustafa Ibrahim" }
+}

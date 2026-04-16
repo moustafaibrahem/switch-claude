@@ -1,0 +1,3 @@
+scripts/claude_switch.py  text eol=lf
+scripts/claude-switch     text eol=lf
+scripts/claude-switch.cmd text eol=crlf
