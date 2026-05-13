@@ -1,8 +1,162 @@
 #!/usr/bin/env bash
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if command -v python3 >/dev/null 2>&1; then
-  exec python3 "$SCRIPT_DIR/claude_switch.py" "$@"
-else
-  exec python "$SCRIPT_DIR/claude_switch.py" "$@"
-fi
+
+CLAUDE_DIR="$HOME/.claude"
+CRED_FILE="$CLAUDE_DIR/.credentials.json"
+CLAUDE_JSON="$HOME/.claude.json"
+PROFILE_MARKER="$CLAUDE_DIR/.current-profile"
+
+usage() {
+  echo "Usage: claude-switch <command> [name]"
+  echo ""
+  echo "Commands:"
+  echo "  save <name>     Save current credentials as a named profile"
+  echo "  use <name>      Switch to a saved profile"
+  echo "  list            List all saved profiles"
+  echo "  delete <name>   Delete a saved profile"
+  echo "  current         Show current account (runs claude auth status)"
+  echo ""
+  echo "Example workflow:"
+  echo "  claude auth login          # Log in as account A"
+  echo "  claude-switch save work    # Save as 'work'"
+  echo "  claude auth login          # Log in as account B"
+  echo "  claude-switch save personal"
+  echo "  claude-switch use work     # Switch instantly"
+}
+
+validate_name() {
+  local name="$1"
+  if [[ ! "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo "Error: Profile name must be alphanumeric (a-z, 0-9, dash, underscore)." >&2
+    exit 1
+  fi
+}
+
+profile_path() {
+  echo "$CLAUDE_DIR/.credentials.$1.json"
+}
+
+clear_oauth_cache() {
+  if [[ -f "$CLAUDE_JSON" ]]; then
+    local PY=""
+    if command -v python3 >/dev/null 2>&1; then PY=python3
+    elif command -v python  >/dev/null 2>&1; then PY=python
+    else
+      echo "Warning: python not found; skipping oauth cache clear." >&2
+      return 0
+    fi
+    "$PY" -c "
+import json, sys
+try:
+    with open(sys.argv[1], 'r') as f:
+        data = json.load(f)
+    if 'oauthAccount' in data:
+        del data['oauthAccount']
+        with open(sys.argv[1], 'w') as f:
+            json.dump(data, f, indent=2)
+            f.write('\n')
+except Exception as e:
+    print(f'Warning: Could not clear OAuth cache: {e}', file=sys.stderr)
+" "$CLAUDE_JSON"
+  fi
+}
+
+cmd_save() {
+  local name="${1:-}"
+  if [[ -z "$name" ]]; then
+    echo "Error: Missing profile name. Usage: claude-switch save <name>" >&2
+    exit 1
+  fi
+  validate_name "$name"
+  if [[ ! -f "$CRED_FILE" ]]; then
+    echo "Error: Not logged in. Run 'claude auth login' first." >&2
+    exit 1
+  fi
+  cp "$CRED_FILE" "$(profile_path "$name")"
+  echo "$name" > "$PROFILE_MARKER"
+  echo "Profile '$name' saved."
+}
+
+cmd_use() {
+  local name="${1:-}"
+  if [[ -z "$name" ]]; then
+    echo "Error: Missing profile name. Usage: claude-switch use <name>" >&2
+    exit 1
+  fi
+  local pfile
+  pfile="$(profile_path "$name")"
+  if [[ ! -f "$pfile" ]]; then
+    echo "Error: Profile '$name' not found. Run 'claude-switch list' to see available profiles." >&2
+    exit 1
+  fi
+  # Auto-save current profile before switching (preserves refreshed tokens)
+  if [[ -f "$PROFILE_MARKER" && -f "$CRED_FILE" ]]; then
+    local current
+    current="$(cat "$PROFILE_MARKER")"
+    if [[ -n "$current" && "$current" != "$name" ]]; then
+      cp "$CRED_FILE" "$(profile_path "$current")"
+      echo "Auto-saved current profile '$current'."
+    fi
+  fi
+  cp "$pfile" "$CRED_FILE"
+  clear_oauth_cache
+  echo "$name" > "$PROFILE_MARKER"
+  echo "Switched to profile '$name'. Start a new claude session to use it."
+}
+
+cmd_list() {
+  local found=0
+  for f in "$CLAUDE_DIR"/.credentials.*.json; do
+    [[ -f "$f" ]] || continue
+    local base
+    base="$(basename "$f")"
+    # Strip .credentials. prefix and .json suffix
+    local name="${base#.credentials.}"
+    name="${name%.json}"
+    echo "  $name"
+    found=1
+  done
+  if [[ "$found" -eq 0 ]]; then
+    echo "No saved profiles."
+  fi
+}
+
+cmd_delete() {
+  local name="${1:-}"
+  if [[ -z "$name" ]]; then
+    echo "Error: Missing profile name. Usage: claude-switch delete <name>" >&2
+    exit 1
+  fi
+  validate_name "$name"
+  local pfile
+  pfile="$(profile_path "$name")"
+  if [[ ! -f "$pfile" ]]; then
+    echo "Error: Profile '$name' not found." >&2
+    exit 1
+  fi
+  rm "$pfile"
+  if [[ -f "$PROFILE_MARKER" ]]; then
+    local current
+    current="$(cat "$PROFILE_MARKER")"
+    if [[ "$current" == "$name" ]]; then
+      rm -f "$PROFILE_MARKER"
+    fi
+  fi
+  echo "Profile '$name' deleted."
+}
+
+cmd_current() {
+  claude auth status
+}
+
+command="${1:-}"
+shift || true
+
+case "$command" in
+  save)    cmd_save "$@" ;;
+  use)     cmd_use "$@" ;;
+  list)    cmd_list ;;
+  delete)  cmd_delete "$@" ;;
+  current) cmd_current ;;
+  *)       usage ;;
+esac

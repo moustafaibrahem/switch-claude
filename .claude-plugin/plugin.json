@@ -1,6 +1,10 @@
 {
   "name": "claude-switch",
   "version": "1.0.0",
-  "description": "Switch between saved Claude Code account profiles without logging out. Cross-shell (bash, cmd, PowerShell).",
-  "author": { "name": "Moustafa Ibrahim" }
+  "description": "Switch between saved Claude Code account profiles without logging out. Cross-shell, single bash script core.",
+  "author": { "name": "Moustafa Ibrahim" },
+  "homepage": "https://github.com/moustafaibrahem/switch-claude",
+  "repository": "https://github.com/moustafaibrahem/switch-claude",
+  "license": "MIT",
+  "keywords": ["accounts", "profiles", "auth", "credentials", "switch"]
 }

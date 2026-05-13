@@ -1,0 +1,16 @@
+{
+  "description": "Auto-installs claude-switch CLI to ~/.local/bin on Claude Code session start.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/install-cli.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

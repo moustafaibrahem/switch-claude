@@ -1,3 +1,2 @@
-scripts/claude_switch.py  text eol=lf
-scripts/claude-switch     text eol=lf
-scripts/claude-switch.cmd text eol=crlf
+scripts/claude-switch       text eol=lf
+hooks/install-cli.sh        text eol=lf

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "switch-claude",
+  "version": "1.0.0",
+  "description": "Marketplace for the claude-switch plugin.",
+  "repository": "https://github.com/moustafaibrahem/switch-claude",
+  "owner": {
+    "name": "Moustafa Ibrahim"
+  },
+  "plugins": [
+    {
+      "name": "claude-switch",
+      "source": "./",
+      "description": "Switch between saved Claude Code account profiles without logging out.",
+      "author": { "name": "Moustafa Ibrahim" },
+      "category": "productivity",
+      "homepage": "https://github.com/moustafaibrahem/switch-claude"
+    }
+  ]
+}
